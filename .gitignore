@@ -1,39 +1,51 @@
+# ==================================
+# 1. Java & Maven Build Artifacts
+# ==================================
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-.kotlin
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
 
-### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-*.iws
+# ==================================
+# 2. IntelliJ IDEA Specific Files
+# ==================================
+.idea/
 *.iml
+*.iws
 *.ipr
+out/
+/gen/
+/.apt_generated/
 
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-
-### Mac OS ###
+# ==================================
+# 3. macOS System Files
+# ==================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+*.swp
+
+# ==================================
+# 4. JavaLSM Local Runtime Data
+# ==================================
+# Database storage directory
+data/
+# SSTable files
+*.sst
+# Write-Ahead Log (WAL) files
+*.log
+# Metadata files
+MANIFEST-*
+CURRENT
+
+# ==================================
+# 5. JMH Benchmark Artifacts
+# ==================================
+jmh-result.json
+benchmarks.jar
