@@ -15,7 +15,7 @@ public class DB {
 
   public String get(String key) {
     String value = memtable.get(key);
-    return (value.equals(Constants.TOMBSTONE) ? null : value;
+    return (value.equals(Constants.TOMBSTONE)) ? null : value;
   }
 
   public void remove(String key) {

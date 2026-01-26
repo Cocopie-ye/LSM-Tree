@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -22,6 +23,14 @@ class SSTable {
 
   private static final int MAX_BLOCK_SIZE = 4000;
 
+  public SSTable(String filePath) throws IOException {
+    this.filePath = filePath;
+    this.blocks = new TreeMap<>();
+    this.maxKey = null;
+    this.minKey = null;
+    init();
+  }
+
   public SSTable(String filePath, TreeMap<String, BlockInfo> blocks, String maxKey, String minKey) {
     this.filePath = filePath;
     this.blocks = blocks;
@@ -29,12 +38,54 @@ class SSTable {
     this.minKey = minKey;
   }
 
+  private void init() throws IOException {
+    long startOfBlock = 0L;
+    long lenOfBlock = 0L;
+    String firstKeyInBlock = null;
+
+    try (RandomAccessFile raf = new RandomAccessFile(filePath, "r")) {
+      while (raf.getFilePointer() <raf.length()) {
+        long startOfCurEntry = raf.getFilePointer();
+        String key = IOUtils.readNextString(raf);
+        int lenOfValue = raf.readInt();
+        raf.skipBytes(lenOfValue);
+        long lenOfEntry = raf.getFilePointer() - startOfCurEntry;
+
+        if (lenOfEntry + lenOfBlock > MAX_BLOCK_SIZE && firstKeyInBlock != null) {
+          // Record the block.
+          this.blocks.put(firstKeyInBlock, new BlockInfo(startOfBlock, lenOfBlock));
+          // Update for a new block.
+          startOfBlock = startOfCurEntry;
+          lenOfBlock = 0L;
+          firstKeyInBlock = null;
+        }
+
+        // Include current entry into block
+        if (firstKeyInBlock == null) {
+          firstKeyInBlock = key;
+        }
+
+        lenOfBlock += lenOfEntry;
+        minKey = (minKey == null) ? key : minKey;
+        maxKey = key;
+      }
+
+      if (firstKeyInBlock != null) {
+        this.blocks.put(firstKeyInBlock, new BlockInfo(startOfBlock, lenOfBlock));
+      }
+    }
+  }
+
   public static SSTable createSSTableFromMemtable(Memtable memtable) throws IOException{
-    File folder = new File("./data");
+    return createSSTableFromMemtable(memtable, Path.of("./data"));
+  }
+
+  public static SSTable createSSTableFromMemtable(Memtable memtable, Path dirtory) throws IOException {
+    File folder = dirtory.toFile();
     if (!folder.exists()) {
       folder.mkdirs();
     }
-    String filePath = "./data/sstable_" + System.nanoTime() + ".sst";
+    String filePath = dirtory.resolve("sstable_" + System.nanoTime() + ".sst").toString();
     // TODO: BloomFilter
     TreeMap<String, BlockInfo> blocks = new TreeMap<>();//<firstKey, blockInfor>
     String minKey = null;
@@ -42,8 +93,8 @@ class SSTable {
 
     try (RandomAccessFile raf = new RandomAccessFile(filePath, "rw")) {
       Iterator<Entry<String, String>> iterator = memtable.iterator();
-      long lenOfBlock = 0L;
       long startOfBlock = 0L;
+      long lenOfBlock = 0L;
       String firstKeyInBlock = null;
 
       while (iterator.hasNext()) {
@@ -134,5 +185,9 @@ class SSTable {
       throw new RuntimeException("Error reading sstable file" + filePath, e);
     }
     return null;
+  }
+
+  public String getFilePath() {
+    return filePath;
   }
 }
