@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import util.Constants;
 import util.IOUtils;
 
 public class SSTable {
@@ -77,7 +78,7 @@ public class SSTable {
   }
 
   public static SSTable createSSTableFromMemtable(Memtable memtable) throws IOException{
-    return createSSTableFromMemtable(memtable, Path.of("./data"));
+    return createSSTableFromMemtable(memtable, Path.of(Constants.DEFAULT_DATA_DIR));
   }
 
   public static SSTable createSSTableFromMemtable(Memtable memtable, Path dirtory) throws IOException {

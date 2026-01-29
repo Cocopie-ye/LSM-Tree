@@ -104,4 +104,8 @@ public class Manifest {
     }
     return new ArrayList<>(levelList);
   }
+
+  public String getFileDataDir() {
+    return dataDir;
+  }
 }

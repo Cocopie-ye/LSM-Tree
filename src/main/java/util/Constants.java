@@ -8,7 +8,7 @@ public class Constants {
 
   public static final String TOMBSTONE = "<TOMBSTONE>";
 
-
+  public static final int MAXSIZE_MEMTABLE = 1024;
 
   private Constants() {}
 }
