@@ -14,8 +14,8 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 import util.IOUtils;
 
-class SSTable {
-  private final String filePath;
+public class SSTable {
+  private final Path filePath;
   //private final BloomFilterUtil bloomFilterUtil;
   private final TreeMap<String, BlockInfo> blocks;
   private String maxKey;
@@ -23,7 +23,7 @@ class SSTable {
 
   private static final int MAX_BLOCK_SIZE = 4000;
 
-  public SSTable(String filePath) throws IOException {
+  public SSTable(Path filePath) throws IOException {
     this.filePath = filePath;
     this.blocks = new TreeMap<>();
     this.maxKey = null;
@@ -31,7 +31,7 @@ class SSTable {
     init();
   }
 
-  public SSTable(String filePath, TreeMap<String, BlockInfo> blocks, String maxKey, String minKey) {
+  public SSTable(Path filePath, TreeMap<String, BlockInfo> blocks, String maxKey, String minKey) {
     this.filePath = filePath;
     this.blocks = blocks;
     this.maxKey = maxKey;
@@ -43,7 +43,7 @@ class SSTable {
     long lenOfBlock = 0L;
     String firstKeyInBlock = null;
 
-    try (RandomAccessFile raf = new RandomAccessFile(filePath, "r")) {
+    try (RandomAccessFile raf = new RandomAccessFile(String.valueOf(filePath), "r")) {
       while (raf.getFilePointer() <raf.length()) {
         long startOfCurEntry = raf.getFilePointer();
         String key = IOUtils.readNextString(raf);
@@ -85,13 +85,13 @@ class SSTable {
     if (!folder.exists()) {
       folder.mkdirs();
     }
-    String filePath = dirtory.resolve("sstable_" + System.nanoTime() + ".sst").toString();
+    Path filePath = dirtory.resolve("sstable_" + System.nanoTime() + ".sst");
     // TODO: BloomFilter
     TreeMap<String, BlockInfo> blocks = new TreeMap<>();//<firstKey, blockInfor>
     String minKey = null;
     String maxKey = null;
 
-    try (RandomAccessFile raf = new RandomAccessFile(filePath, "rw")) {
+    try (RandomAccessFile raf = new RandomAccessFile(String.valueOf(filePath), "rw")) {
       Iterator<Entry<String, String>> iterator = memtable.iterator();
       long startOfBlock = 0L;
       long lenOfBlock = 0L;
@@ -155,7 +155,7 @@ class SSTable {
     BlockInfo infoOfTargetBlock = entry.getValue();
 
     // try-with-resources: responsible for opening file on disk.
-    try (RandomAccessFile raf = new RandomAccessFile(filePath, "r")) {
+    try (RandomAccessFile raf = new RandomAccessFile(String.valueOf(filePath), "r")) {
       raf.seek(infoOfTargetBlock.offset);
       byte[] blockData = new byte[(int)infoOfTargetBlock.size];
       raf.readFully(blockData);// Load data from disk into memory buffer.
@@ -187,7 +187,7 @@ class SSTable {
     return null;
   }
 
-  public String getFilePath() {
+  public Path getFilePath() {
     return filePath;
   }
 }
