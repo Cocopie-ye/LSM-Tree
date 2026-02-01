@@ -1,28 +1,45 @@
 package com.andrea.lsm.core;
 
-import com.andrea.lsm.memtable.Memtable;
+import com.andrea.lsm.manifest.Manifest;
+import com.andrea.lsm.memtable.MemtableService;
+import com.andrea.lsm.sstable.SSTableService;
+import java.io.IOException;
 import util.Constants;
 
-public class DB {
-  private Memtable memtable;
+public class DB implements AutoCloseable {
+  private final Manifest manifest;
+  private final MemtableService memtableService;
+  private final SSTableService sstableService;
 
-  public DB() {
-    memtable = new Memtable();
+  public DB() throws IOException {
+    this(Constants.DEFAULT_DATA_DIR);
   }
-  public void put(String key, String value) {
-    memtable.put(key, value);
+
+  public DB(String dataDir) throws IOException {
+    manifest = new Manifest(dataDir);
+    memtableService = new MemtableService(manifest);
+    sstableService = new SSTableService(manifest);
+  }
+
+  public void put(String key, String value) throws IOException {
+    memtableService.put(key, value);
   }
 
   public String get(String key) {
-    String value = memtable.get(key);
-    return (value.equals(Constants.TOMBSTONE)) ? null : value;
+    String value = memtableService.get(key);
+    if (value == null) {
+      value = sstableService.get(key);
+    }
+    return (value == null || value.equals(Constants.TOMBSTONE)) ? null : value;
   }
 
-  public void remove(String key) {
-    memtable.put(key, Constants.TOMBSTONE);
+  public void remove(String key) throws IOException {
+
+    memtableService.put(key, Constants.TOMBSTONE);
   }
 
-  public void close() {
-    // TODO: finish.
+  @Override
+  public void close() throws IOException {
+    memtableService.close();
   }
 }
