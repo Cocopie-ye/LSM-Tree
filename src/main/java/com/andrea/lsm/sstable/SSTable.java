@@ -1,6 +1,8 @@
 package com.andrea.lsm.sstable;
 
 import com.andrea.lsm.memtable.Memtable;
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.File;
@@ -17,12 +19,20 @@ import util.IOUtils;
 
 public class SSTable {
   private final Path filePath;
-  //private final BloomFilterUtil bloomFilterUtil;
+  private BloomFilter<String> bloomFilter;
   private final TreeMap<String, BlockInfo> blocks;
   private String maxKey;
   private String minKey;
 
   private static final int MAX_BLOCK_SIZE = 4000;
+
+  public SSTable(Path filePath, BloomFilter bloomFilter, TreeMap<String, BlockInfo> blocks, String maxKey, String minKey) {
+    this.filePath = filePath;
+    this.bloomFilter = bloomFilter;
+    this.blocks = blocks;
+    this.maxKey = maxKey;
+    this.minKey = minKey;
+  }
 
   public SSTable(Path filePath) throws IOException {
     this.filePath = filePath;
@@ -32,22 +42,17 @@ public class SSTable {
     init();
   }
 
-  public SSTable(Path filePath, TreeMap<String, BlockInfo> blocks, String maxKey, String minKey) {
-    this.filePath = filePath;
-    this.blocks = blocks;
-    this.maxKey = maxKey;
-    this.minKey = minKey;
-  }
-
   private void init() throws IOException {
     long startOfBlock = 0L;
     long lenOfBlock = 0L;
     String firstKeyInBlock = null;
+    this.bloomFilter = BloomFilter.create(Funnels.stringFunnel(StandardCharsets.UTF_8), Constants.EXPECTED_INSERTIONS, Constants.FALSE_POSITIVE_PROBABILITY);
 
     try (RandomAccessFile raf = new RandomAccessFile(String.valueOf(filePath), "r")) {
       while (raf.getFilePointer() <raf.length()) {
         long startOfCurEntry = raf.getFilePointer();
         String key = IOUtils.readNextString(raf);
+        bloomFilter.put(key);
         int lenOfValue = raf.readInt();
         raf.skipBytes(lenOfValue);
         long lenOfEntry = raf.getFilePointer() - startOfCurEntry;
@@ -87,7 +92,7 @@ public class SSTable {
       folder.mkdirs();
     }
     Path filePath = dirtory.resolve("sstable_" + System.nanoTime() + ".sst");
-    // TODO: BloomFilter
+    BloomFilter<String> bloomFilter = BloomFilter.create(Funnels.stringFunnel(StandardCharsets.UTF_8), Constants.EXPECTED_INSERTIONS, Constants.FALSE_POSITIVE_PROBABILITY);
     TreeMap<String, BlockInfo> blocks = new TreeMap<>();//<firstKey, blockInfor>
     String minKey = null;
     String maxKey = null;
@@ -122,6 +127,7 @@ public class SSTable {
         raf.write(keyBytes);
         raf.writeInt(valueBytes.length);
         raf.write(valueBytes);
+        bloomFilter.put(key);
 
         if (minKey == null) {
           minKey = key;
@@ -135,7 +141,7 @@ public class SSTable {
         blocks.put(firstKeyInBlock, new BlockInfo(startOfBlock, lenOfBlock));
       }
     }
-    return new SSTable(filePath, blocks, maxKey, minKey);
+    return new SSTable(filePath, bloomFilter, blocks, maxKey, minKey);
   }
 
   /**
@@ -146,6 +152,10 @@ public class SSTable {
   public String get(String key) {
     if (key.compareTo(maxKey) > 0 || key.compareTo(minKey) < 0) {
       // not in current sstable.
+      return null;
+    }
+
+    if (!bloomFilter.mightContain(key)) {
       return null;
     }
 
