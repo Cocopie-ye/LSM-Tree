@@ -35,7 +35,8 @@ public class CompactorTest {
   }
 
   // Helper method to create an SSTable from a Memtable
-  private SSTable createSSTableFromMap(Map<String, String> data, Path directory) throws IOException {
+  private SSTable createSSTableFromMap(Map<String, String> data, Path directory)
+      throws IOException {
     Memtable memtable = createMemtable(data);
     return SSTable.createSSTableFromMemtable(memtable, directory);
   }
@@ -67,7 +68,8 @@ public class CompactorTest {
     data2.put("orange", "orange");
     SSTable sstable2 = createSSTableFromMap(data2, tempDir);
 
-    List<SSTable> sstablesToCompact = List.of(sstable1, sstable2); // Order matters: sstable1 is older
+    List<SSTable> sstablesToCompact = List.of(sstable1,
+        sstable2); // Order matters: sstable1 is older
 
     Path outputSSTablePath = tempDir.resolve("compacted_no_overlap.sst");
     SSTable compactedSSTable = compactor.compact(sstablesToCompact, outputSSTablePath);
@@ -220,14 +222,9 @@ public class CompactorTest {
   }
 
   @Test
-  @DisplayName("Compaction with keys spanning across different SSTables and deletions (null values)")
+  @DisplayName("Compaction should remove keys marked as DELETED (Tombstones)")
   void testCompactWithDeletions() throws IOException {
-    // For simplicity, let's assume a "null" value means deletion in our test setup.
-    // In a real LSM-Tree, this would be a specific tombstone marker.
-    // IOUtils.deserializeValue() should handle null values correctly if you're using it.
-    // Note: Your current SSTable.createSSTableFromIterator writes value bytes,
-    // so you might need to represent a deletion as a special string like Constants.TOMBSTONE_VALUE
-    // if your deserialization logic expects byte arrays.
+    String tombstone = util.Constants.TOMBSTONE;
 
     // SSTable 1 (oldest)
     Map<String, String> data1 = new TreeMap<>();
@@ -238,15 +235,15 @@ public class CompactorTest {
 
     // SSTable 2 (middle)
     Map<String, String> data2 = new TreeMap<>();
-    data2.put("keyB", "valB2"); // Update keyB
-    data2.put("keyD", "valD1"); // Add keyD
-    data2.put("keyC", "DELETED"); // Mark keyC for deletion (using a sentinel value for testing)
+    data2.put("keyB", "valB2");
+    data2.put("keyD", "valD1");
+    data2.put("keyC", tombstone);
     SSTable sstable2 = createSSTableFromMap(data2, tempDir);
 
     // SSTable 3 (newest)
     Map<String, String> data3 = new TreeMap<>();
-    data3.put("keyA", "DELETED"); // Mark keyA for deletion
-    data3.put("keyE", "valE1"); // Add keyE
+    data3.put("keyA", tombstone);
+    data3.put("keyE", "valE1");
     SSTable sstable3 = createSSTableFromMap(data3, tempDir);
 
     List<SSTable> sstablesToCompact = List.of(sstable1, sstable2, sstable3);
@@ -256,14 +253,8 @@ public class CompactorTest {
 
     Map<String, String> actual = readSSTableToMap(compactedSSTable);
 
-    // Expected: keyA and keyC should be "deleted", keyB updated, keyD and keyE added
-    // The compaction logic, as implemented, will include "DELETED" entries.
-    // A true compaction would filter these out *after* determining the latest value.
-    // For now, let's just assert that the "DELETED" values are indeed the latest ones.
     Map<String, String> expected = new TreeMap<>();
-    expected.put("keyA", "DELETED");
     expected.put("keyB", "valB2");
-    expected.put("keyC", "DELETED");
     expected.put("keyD", "valD1");
     expected.put("keyE", "valE1");
 

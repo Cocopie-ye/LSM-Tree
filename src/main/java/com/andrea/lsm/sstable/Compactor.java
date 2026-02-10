@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.PriorityQueue;
+import util.Constants;
 
 public class Compactor{
   private static class MergeElement {
@@ -62,24 +63,31 @@ public class Compactor{
     }
 
     public void advance() {
-      if (heap.isEmpty()) {
-        nextEntry = null;
-        return;
-      }
-      MergeElement currentMin = heap.poll();
-      int indexOfSourceSSTable = currentMin.indexOfSourceSSTable;
-      nextEntry = currentMin.entry;
-      String curKey = nextEntry.getKey();
-
-      if (list.get(indexOfSourceSSTable).hasNext()) {
-        heap.offer(new MergeElement(indexOfSourceSSTable, list.get(indexOfSourceSSTable).next()));
-      }
-
-      while (!heap.isEmpty() && heap.peek().entry.getKey().equals(curKey)) {
-        int duplicateTableIndex = heap.poll().indexOfSourceSSTable;
-        if (list.get(duplicateTableIndex).hasNext()) {
-          heap.offer(new MergeElement(duplicateTableIndex, list.get(duplicateTableIndex).next()));
+      while (true) {
+        if (heap.isEmpty()) {
+          nextEntry = null;
+          return;
         }
+        MergeElement currentMin = heap.poll();
+        int indexOfSourceSSTable = currentMin.indexOfSourceSSTable;
+        nextEntry = currentMin.entry;
+        String curKey = nextEntry.getKey();
+
+        if (list.get(indexOfSourceSSTable).hasNext()) {
+          heap.offer(new MergeElement(indexOfSourceSSTable, list.get(indexOfSourceSSTable).next()));
+        }
+
+        while (!heap.isEmpty() && heap.peek().entry.getKey().equals(curKey)) {
+          int duplicateTableIndex = heap.poll().indexOfSourceSSTable;
+          if (list.get(duplicateTableIndex).hasNext()) {
+            heap.offer(new MergeElement(duplicateTableIndex, list.get(duplicateTableIndex).next()));
+          }
+        }
+
+        if (nextEntry.getValue().equals(Constants.TOMBSTONE)) {
+          continue;
+        }
+        break;
       }
     }
 
