@@ -5,7 +5,6 @@ import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
@@ -83,13 +82,17 @@ public class SSTable {
     }
   }
 
-  public static SSTable createSSTableFromMemtable(Memtable memtable) throws IOException{
-    return createSSTableFromMemtable(memtable, Path.of(Constants.DEFAULT_DATA_DIR));
+  public static Path generateSSTablePath(Path rootPath) {
+    String fileName = Constants.SSTABLE_PREFIX + System.nanoTime() + Constants.SSTABLE_FILE_EXTENSION;
+    return rootPath.resolve(fileName);
   }
 
-  public static SSTable createSSTableFromMemtable(Memtable memtable, Path dirtory) throws IOException {
-    Path filePath = dirtory.resolve("sstable_" + System.nanoTime() + ".sst");
-    return createSSTableFromIterator(memtable.iterator(), filePath);
+  public static SSTable createSSTableFromMemtable(Memtable memtable) throws IOException{
+    return createSSTableFromMemtable(memtable, Path.of(Constants.DEFAULT_DATA_DIR).toAbsolutePath());
+  }
+
+  public static SSTable createSSTableFromMemtable(Memtable memtable, Path rootPath) throws IOException {
+    return createSSTableFromIterator(memtable.iterator(), generateSSTablePath(rootPath));
   }
 
   public static SSTable createSSTableFromIterator(Iterator<Entry<String, String>> iterator, Path filePath) throws IOException {
@@ -206,5 +209,18 @@ public class SSTable {
 
   public Path getFilePath() {
     return filePath;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SSTable sstable = (SSTable) o;
+    return java.util.Objects.equals(filePath, sstable.filePath);
+  }
+
+  @Override
+  public int hashCode() {
+    return java.util.Objects.hash(filePath);
   }
 }

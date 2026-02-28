@@ -92,9 +92,7 @@ public class Compactor{
     }
 
     @Override
-    public boolean hasNext() {
-      return nextEntry != null;
-    }
+    public boolean hasNext() { return nextEntry != null;}
 
     @Override
     public Entry<String, String> next() {

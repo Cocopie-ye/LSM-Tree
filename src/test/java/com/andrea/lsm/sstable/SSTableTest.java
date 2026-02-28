@@ -9,6 +9,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import util.Constants;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -43,6 +44,17 @@ class SSTableTest {
   @AfterEach
   void tearDown() {
     // @TempDir，JUnit will clean up generated SSTable files automatically.
+  }
+
+  @Test
+  void testSSTablePathGeneration(@TempDir Path tempDir) {
+    Path p1 = SSTable.generateSSTablePath(tempDir);
+    Path p2 = SSTable.generateSSTablePath(tempDir);
+
+    assertTrue(p1.getFileName().toString().startsWith(Constants.SSTABLE_PREFIX));
+    assertTrue(p1.toString().endsWith(Constants.SSTABLE_FILE_EXTENSION));
+    assertNotEquals(p1, p2, "Filenames should be unique.");
+    assertEquals(tempDir, p1.getParent(), "The path should be in the temporary directory.");
   }
 
   @Test

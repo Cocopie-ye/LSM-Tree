@@ -1,15 +1,18 @@
 package util;
 
 import com.andrea.lsm.memtable.Memtable;
+import com.andrea.lsm.sstable.Compactor;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class WAL implements AutoCloseable{
   private Path filePath;
@@ -23,8 +26,8 @@ public class WAL implements AutoCloseable{
 
   public void writeEntry(String key, String value) throws IOException {
     // append : KeyLen(4) + Key + ValLen(4) + Value
-    byte[] keyBytes = key.getBytes();
-    byte[] valueBytes = value.getBytes();
+    byte[] keyBytes = key.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    byte[] valueBytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     out.writeInt(keyBytes.length);
     out.write(keyBytes);
     out.writeInt(valueBytes.length);
@@ -43,6 +46,19 @@ public class WAL implements AutoCloseable{
     out.close();
   }
 
+  public static void recoverAll(Path rootPath, Memtable memtable) throws IOException {
+    try(var stream = Files.list(rootPath)){
+      List<Path> walFiles = stream
+          .filter(path -> path.getFileName().toString().startsWith(Constants.WAL_PREFIX))
+          .filter(path -> path.getFileName().toString().endsWith(Constants.WAL_FILE_EXTENSION))
+          .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+          .collect(Collectors.toList());
+      for (Path walFile : walFiles){
+        recoverMemtableFromWal(walFile, memtable);
+      }
+    }
+  }
+
   public static void recoverMemtableFromWal(Path walPath, Memtable memtable) throws IOException {
     if (!Files.exists(walPath)) {return;}
 
@@ -56,10 +72,15 @@ public class WAL implements AutoCloseable{
         byte[] valueBytes = new byte[valueLen];
         in.readFully(valueBytes);
 
-        memtable.put(new String(keyBytes), new String(valueBytes));
+        memtable.put(new String(keyBytes, java.nio.charset.StandardCharsets.UTF_8),
+            new String(valueBytes, java.nio.charset.StandardCharsets.UTF_8));
       }
     } catch (IOException e) {
       System.err.println("Warning: WAL file ended unexpectedly (truncated). Recovered data up to the break.");
     }
+  }
+
+  public static Path generateWALPath(Path rootPath) {
+    return rootPath.resolve(Constants.WAL_PREFIX + System.nanoTime() + Constants.WAL_FILE_EXTENSION);
   }
 }

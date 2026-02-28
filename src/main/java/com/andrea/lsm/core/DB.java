@@ -17,8 +17,8 @@ public class DB implements AutoCloseable {
 
   public DB(String dataDir) throws IOException {
     manifest = new Manifest(dataDir);
-    memtableService = new MemtableService(manifest);
     sstableService = new SSTableService(manifest);
+    memtableService = new MemtableService(manifest, sstableService);
   }
 
   public void put(String key, String value) throws IOException {
@@ -34,7 +34,6 @@ public class DB implements AutoCloseable {
   }
 
   public void remove(String key) throws IOException {
-
     memtableService.put(key, Constants.TOMBSTONE);
   }
 

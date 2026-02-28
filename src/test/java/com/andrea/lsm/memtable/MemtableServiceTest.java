@@ -2,6 +2,7 @@ package com.andrea.lsm.memtable;
 
 import com.andrea.lsm.manifest.Manifest;
 import com.andrea.lsm.sstable.SSTable;
+import com.andrea.lsm.sstable.SSTableService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,14 +26,18 @@ class MemtableServiceTest {
 
   private MemtableService memtableService;
   private Manifest manifest;
+  private SSTableService sstableService;
 
   @BeforeEach
   void setUp() throws IOException {
     // 1. Initialize Manifest within the temporary directory for metadata tracking
     manifest = new Manifest(tempDir.toString());
 
-    // 2. Initialize the service with the localized manifest
-    memtableService = new MemtableService(manifest);
+    // 2. Initialize the sstable service with manifest.
+    sstableService = new SSTableService(manifest);
+
+    // 3. Initialize the service with the localized manifest
+    memtableService = new MemtableService(manifest, sstableService);
   }
 
   @AfterEach
